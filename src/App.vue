@@ -1,20 +1,20 @@
 <template>
-  <div>
-    <el-button>App 根组件</el-button>
+  <div class="app-container">
+    <!-- 一集路由规则对象挂载点 -->
+    <router-view></router-view>
   </div>
 </template>
 
 <script>
-import { registerAPI } from '@/api'
-
 export default {
   name: 'App',
-  async created() {
-    const res = await registerAPI()
-    console.log(res)
-  },
   methods: {}
 }
 </script>
 
-<style lang="less" scoped></style>
+<style lang="less" scoped>
+.app-container {
+  width: 100%;
+  height: 100%;
+}
+</style>
