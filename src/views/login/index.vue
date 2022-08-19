@@ -65,6 +65,8 @@ export default {
         this.$message.success(res.message)
         // 4. 保存到vuex中
         this.updateToken(res.token)
+        // 跳转到主页
+        this.$router.push('/')
       })
     }
   }
