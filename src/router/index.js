@@ -1,12 +1,31 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
-
+import store from '@/store'
 Vue.use(VueRouter)
 
 const routes = [
   {
     path: '/',
-    component: () => import('@/views/layout')
+    component: () => import('@/views/layout'),
+    redirect: '/user-info', // 默认显示首页的二级路由
+    children: [
+      {
+        path: 'home',
+        component: () => import('@/views/home')
+      },
+      {
+        path: 'user-info', // 这里必须叫user-info, 因为侧边栏导航切换的是它
+        component: () => import('@/views/user/userInfo')
+      },
+      {
+        path: 'user-avatar', // 必须用这个值
+        component: () => import('@/views/user/userAvatar')
+      },
+      {
+        path: 'user-pwd', // 必须用这个值
+        component: () => import('@/views/user/userPwd')
+      }
+    ]
   },
   {
     path: '/reg',
@@ -25,4 +44,22 @@ const router = new VueRouter({
   routes
 })
 
+const whiteList = ['/login', '/reg']
+router.beforeEach((to, from, next) => {
+  const token = store.state.token
+  if (token) {
+    if (!store.state.userInfo.username) {
+      // 有token但是没有用户信息, 才去请求用户信息保存到vuex里
+      // 调用actions里方法请求数据
+      store.dispatch('initUserInfo')
+    }
+    // 下次切换页面vuex里有用户信息数据就不会重复请求用户信息
+    next() // 路由放行
+  } else {
+    // 如果是想去登录注册，那就放你走
+    if (whiteList.includes(to.path)) return next()
+    // 你又没token，又想去登录注册以外的页面，不行，强制转到登录页
+    next('/login')
+  }
+})
 export default router
