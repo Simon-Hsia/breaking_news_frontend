@@ -163,3 +163,20 @@ export const addArticleAPI = (fd) => {
     // 这个接口文档要求请求体里是一个FormData类型(表单数据对象)携带文件给后台
   })
 }
+
+/**
+ * 获取文章列表
+ * @param {*} param0 { pagenum: 当前页码数, pagesize: 当前页条数, cate_id: 文章分类id, state: 文章状态 }
+ * @returns Promise对象
+ */
+export const getArticleListAPI = ({ pagenum, pagesize, cate_id, state }) => {
+  return request({
+    url: '/my/article/list',
+    params: {
+      pagenum,
+      pagesize,
+      cate_id,
+      state
+    }
+  })
+}

@@ -29,14 +29,39 @@
           </el-form-item>
         </el-form>
         <!-- 发表文章的按钮 -->
-        <el-button type="primary" size="small" class="btn-pub" @click="showPubDialogFn">
+        <el-button
+          type="primary"
+          size="small"
+          class="btn-pub"
+          @click="pubDialogVisible = true"
+        >
           发表文章
         </el-button>
       </div>
 
       <!-- 文章表格区域 -->
-
+      <el-table :data="artList" stripe style="width: 100%">
+        <el-table-column prop="title" label="文章标题"> </el-table-column>
+        <el-table-column prop="cate_name" label="分类"> </el-table-column>
+        <el-table-column prop="pub_date" label="发表时间">
+          <template v-slot="{ row }">
+            <span>{{ $formatDate(row.pub_date) }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="state" label="状态"> </el-table-column>
+        <el-table-column label="操作"> </el-table-column>
+      </el-table>
       <!-- 分页区域 -->
+      <el-pagination
+        @size-change="handleSizeChangeFn"
+        @current-change="handleCurrentChangeFn"
+        :current-page.sync="q.pagenum"
+        :page-sizes="[2, 3, 5, 10]"
+        :page-size.sync="q.pagesize"
+        layout="total, sizes, prev, pager, next, jumper"
+        :total="total"
+      >
+      </el-pagination>
     </el-card>
     <!-- 发表文章的 Dialog 对话框 -->
     <el-dialog
@@ -106,20 +131,20 @@
 <script>
 // 导入默认的封面图片
 import defaultImg from '@/assets/images/cover.jpg'
-import { getArtCateListAPI, addArticleAPI } from '@/api'
+import { getArtCateListAPI, addArticleAPI, getArticleListAPI } from '@/api'
 
-/*
-    标签和样式中，引入图片文件直接写"静态路径”(把路径放在js的vue变量里再赋予是不行的)
-  原因: webpack分析标签的时候，如果snc的值是一个相对路径，它会去帮我们找到那个路径的文件并一起打包
-  打包时候，会分析文件的大小，小图转成base64字符串再赋予给src，如果是大图拷贝图片换个路径给img的src显示(运行时)
-  Vue变量中路径，赋予给标签，都会当做普通的字符串使用
-  以前:我们写的路径是在vscode看着文件夹写的（以前好使的原因:你用live Server/磁盘双击打开，它都能通过你的相对路径，在指定路径文件夹下，找到图片文件真身)
-  现在:写的模板代码，是要被webpack翻译处理转换的，你vscode里的代码，转换后打包到内存中/dist下，相对路径就会变化，运行时,你写的固定路径字符串就找不到那个文件真身了
-  解决:“JS里引入图片，就用import引入", 让webpack把它当做模块数据，是转换成打包后的图片路径还是base64字符串Ⅰ
-  注意:只有相对路径本地图片需要注意，如果你是一个http://外链的图片地址，就可以直接随便用
-  直接标签里写也行，或者在js用变量保存后赋予给标签都ok，因为运行时，浏览器发现src地址是外链就不找相对路径文件夹了
-   */
 export default {
+  /**
+   * 标签和样式中，引入图片文件直接写"静态路径”(把路径放在js的vue变量里再赋予是不行的)
+   * 原因: webpack分析标签的时候，如果snc的值是一个相对路径，它会去帮我们找到那个路径的文件并一起打包
+   * 打包时候，会分析文件的大小，小图转成base64字符串再赋予给src，如果是大图拷贝图片换个路径给img的src显示(运行时)
+   * Vue变量中路径，赋予给标签，都会当做普通的字符串使用
+   * 以前:我们写的路径是在vscode看着文件夹写的（以前好使的原因:你用live Server/磁盘双击打开，它都能通过你的相对路径，在指定路径文件夹下，找到图片文件真身)
+   * 现在:写的模板代码，是要被webpack翻译处理转换的，你vscode里的代码，转换后打包到内存中/dist下，相对路径就会变化，运行时,你写的固定路径字符串就找不到那个文件真身了
+   * 解决:“JS里引入图片，就用import引入", 让webpack把它当做模块数据，是转换成打包后的图片路径还是base64字符串Ⅰ
+   * 注意:只有相对路径本地图片需要注意，如果你是一个http://外链的图片地址，就可以直接随便用
+   * 直接标签里写也行，或者在js用变量保存后赋予给标签都ok，因为运行时，浏览器发现src地址是外链就不找相对路径文件夹了
+   */
   name: 'ArtList',
   data() {
     return {
@@ -131,6 +156,8 @@ export default {
         cate_id: '',
         state: ''
       },
+      artList: [], // 文章的列表数据
+      total: 0, // 总数据条数
       cateList: [], // 文章分类
       pubForm: {
         title: '',
@@ -161,26 +188,14 @@ export default {
   },
   created() {
     this.initCateList()
+    this.initArtListFn()
   },
   methods: {
-    // 发表文章按钮->点击事件->让添加文章对话框出现
-    showPubDialogFn() {
-      this.pubDialogVisible = true
-    },
     // 对话框关闭前的回调
     // 注意:自带的3种关闭方式: dialog自带的点右上角的x，和按下esc按键，和点击半透明蒙层关闭才会走这里，以及你自己点击设置visible对应变量为false，都会导致关闭前回调触发
     async handleClose(done) {
       //  done的作用:调用才会放行让对话框关闭
       // 询问用户是否确认关闭对话框 这是elementui在vue上挂载的一个方法
-      const confirmResult = await this.$confirm(
-        '此操作将导致文章信息丢失, 是否继续?',
-        '提示',
-        {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      ).catch((err) => err) // 捕获确认框Promise对象里选择取消时，拒绝状态结果'cancel'字符串
       // $confirm内部虽然是一个确认提示框，但是它借用了Promise语法来管理，点击确定它的状态为兑现成功状态返回' confirm'，如果用户点击了取消按钮，此Promise对象状态为拒绝状态，返回' cancel'字符串
       // 知识点回顾:
       // 1. await只能用在被async修饰的函数内
@@ -190,12 +205,19 @@ export default {
       // 3. await后面的Promise的对象的拒绝状态(错误)如何捕获呢?
       // 方法1:try{]catch(err){0}
       // 方式2:用Promise的链式调用，而且在catch里return的非Promise拒绝状态的对象值，都会当做成功的结果返回给原地新的Promise对象结果
+      const confirmResult = await this.$confirm(
+        '此操作将导致文章信息丢失, 是否继续?',
+        '提示',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      ).catch((err) => err) // 捕获确认框Promise对象里选择取消时，拒绝状态结果'cancel'字符串
 
       // 此时弹出了这个对话框，如果点了取消或x或esc或外部就让对话框消失，点确定的话不仅这对话框消失，而且回退到artList页面
-      // 取消了关闭-阻止住, 什么都不干
       if (confirmResult === 'cancel') return
-      // 确认关闭
-      done()
+      done() // 确认关闭
     },
     // 获取文章分类的方法
     async initCateList() {
@@ -254,15 +276,36 @@ export default {
         // 关闭对话框
         this.pubDialogVisible = false
         // TODO：刷新文章列表数据
-        // this.init
+        this.initArtListFn()
       })
     },
+    // 监听到对话框已经关闭就会调用这个函数
     onDialogClosedFn() {
       // 清空关键数据
       this.$refs.pubFormRef.resetFields()
       // 因为这2个变量对应的标签不是表单绑定的, 所以需要单独控制
       this.pubForm.content = ''
       this.$refs.imgRef.setAttribute('src', defaultImg)
+    },
+    // 初始化文章列表
+    async initArtListFn() {
+      const { data: res } = await getArticleListAPI(this.q)
+      if (res.code) return this.$message.error('获取文章列表失败!')
+      this.artList = res.data
+      this.total = res.total
+    },
+    // 核心思想:根据选择的页码/条数，影响q对象对应属性的值，再重新发一次请求让后台重新返回数据
+    // pageSize每页条数变化时触发 发生了变化
+    handleSizeChangeFn(newSize) {
+      // 因为Pagination的标签上已经加了.sync，子组件内会双向绑定到右侧vue变量上(q对象里pagesize和pagenum已经改变了)
+      // this.q.pagesize = newSize // 为 pagesize 赋值，这句是多余的，要是不信任饿了么UI也可以写上
+      this.q.pagenum = 1 // 默认展示第一页数据
+      this.initArtListFn() // 重新发起请求
+    },
+    // 页码值发生了变化
+    handleCurrentChangeFn(newPage) {
+      // this.q.pagenum = newPage // 为页码值赋值
+      this.initArtListFn() // 重新发起请求
     }
   }
 }
@@ -292,5 +335,10 @@ export default {
   height: 280px;
   background-size: cover;
   object-fit: cover;
+}
+
+// 分页组件样式
+.el-pagination {
+  margin-top: 15px;
 }
 </style>
