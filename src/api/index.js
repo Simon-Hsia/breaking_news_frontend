@@ -97,3 +97,54 @@ export const updatePwdAPI = (form) => {
     data: form
   })
 }
+
+/**
+ * 获取文章分类
+ * @returns Promise对象
+ */
+export const getArtCateListAPI = () => {
+  return request({
+    url: '/my/cate/list'
+  })
+}
+
+/**
+ * 提交新增分类
+ * @param {*} form { cate_name: 文章分类名字, cate_alias: 文章分类别名 }
+ * @returns Promis对象
+ */
+export const addArtCateAPI = (form) => {
+  return request({
+    url: '/my/cate/add',
+    method: 'POST',
+    data: form
+  })
+}
+
+/**
+ * 更新-文章分类
+ * @param {*} param0 { id: 文章分类id, cate_name: 文章分类名字, cate_alias: 文章分类别名 }
+ * @returns Promise对象
+ */
+export const updateArtCateAPI = (artcate) => {
+  return request({
+    url: '/my/cate/info',
+    method: 'PUT',
+    data: artcate
+  })
+}
+
+/**
+ * 删除-文章分类
+ * @param {*} id 要删除的-文章分类id
+ * @returns Promise对象
+ */
+export const delArtCateAPI = (id) => {
+  return request({
+    url: '/my/cate/del',
+    method: 'DELETE',
+    params: {
+      id
+    }
+  })
+}
