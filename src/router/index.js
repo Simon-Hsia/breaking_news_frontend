@@ -7,7 +7,7 @@ const routes = [
   {
     path: '/',
     component: () => import('@/views/layout'),
-    redirect: '/user-info', // 默认显示首页的二级路由
+    redirect: '/art-list', // 默认显示首页的二级路由
     children: [
       {
         path: 'home',

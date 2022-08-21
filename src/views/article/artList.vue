@@ -44,6 +44,7 @@
       :visible.sync="pubDialogVisible"
       fullscreen
       :before-close="handleClose"
+      @closed="onDialogClosedFn"
     >
       <!-- 发布文章的对话框 -->
       <el-form
@@ -73,13 +74,51 @@
           <!-- 使用 v-model 进行双向的数据绑定 -->
           <quill-editor v-model="pubForm.content"></quill-editor>
         </el-form-item>
+        <el-form-item label="文章封面" prop="cover_img">
+          <!-- 用来显示封面的图片 -->
+          <img
+            src="../../assets/images/cover.jpg"
+            alt=""
+            class="cover-img"
+            ref="imgRef"
+          />
+          <br />
+          <!-- 文件选择框，默认被隐藏 -->
+          <input
+            type="file"
+            style="display: none"
+            ref="iptFileRef"
+            accept="image/*"
+            @change="onCoverChangeFn"
+          />
+          <!-- 选择封面的按钮 -->
+          <el-button type="text" @click="chooseImgFn">+ 选择封面</el-button>
+        </el-form-item>
+        <el-form-item>
+          <el-button type="primary" @click="pubArticleFn('已发布')">发布</el-button>
+          <el-button type="info" @click="pubArticleFn('草稿')">存为草稿</el-button>
+        </el-form-item>
       </el-form>
     </el-dialog>
   </div>
 </template>
 
 <script>
-import { getArtCateListAPI } from '@/api'
+// 导入默认的封面图片
+import defaultImg from '@/assets/images/cover.jpg'
+import { getArtCateListAPI, addArticleAPI } from '@/api'
+
+/*
+    标签和样式中，引入图片文件直接写"静态路径”(把路径放在js的vue变量里再赋予是不行的)
+  原因: webpack分析标签的时候，如果snc的值是一个相对路径，它会去帮我们找到那个路径的文件并一起打包
+  打包时候，会分析文件的大小，小图转成base64字符串再赋予给src，如果是大图拷贝图片换个路径给img的src显示(运行时)
+  Vue变量中路径，赋予给标签，都会当做普通的字符串使用
+  以前:我们写的路径是在vscode看着文件夹写的（以前好使的原因:你用live Server/磁盘双击打开，它都能通过你的相对路径，在指定路径文件夹下，找到图片文件真身)
+  现在:写的模板代码，是要被webpack翻译处理转换的，你vscode里的代码，转换后打包到内存中/dist下，相对路径就会变化，运行时,你写的固定路径字符串就找不到那个文件真身了
+  解决:“JS里引入图片，就用import引入", 让webpack把它当做模块数据，是转换成打包后的图片路径还是base64字符串Ⅰ
+  注意:只有相对路径本地图片需要注意，如果你是一个http://外链的图片地址，就可以直接随便用
+  直接标签里写也行，或者在js用变量保存后赋予给标签都ok，因为运行时，浏览器发现src地址是外链就不找相对路径文件夹了
+   */
 export default {
   name: 'ArtList',
   data() {
@@ -96,7 +135,9 @@ export default {
       pubForm: {
         title: '',
         cate_id: '',
-        content: '' // 文章的内容
+        content: '', // 文章的内容
+        cover_img: null,
+        state: ''
       },
       pubFormRules: {
         // 表单的验证规则对象
@@ -104,8 +145,17 @@ export default {
           { required: true, message: '请输入文章标题', trigger: 'blur' },
           { min: 1, max: 30, message: '文章标题的长度为1-30个字符', trigger: 'blur' }
         ],
-        cate_id: [{ required: true, message: '请选择文章标题', trigger: 'blur' }],
-        content: [{ required: true, message: '请输入文章内容', trigger: 'blur' }]
+        // 注意，这个是下拉菜单，所以trigger是change触发校验
+        cate_id: [{ required: true, message: '请选择文章类别', trigger: 'change' }],
+        // 原视频貌似因为这个不是饿了么UI的东西所以没校验功能，只能自己去它的官网看文档解决，但这里不知道为啥我可以
+        content: [{ required: true, message: '请输入文章内容', trigger: 'blur' }],
+        // 为何这个输入内容了，校验还不自己去掉?/原因:
+        // content对应quill-editor富文本编辑器，它不是el提供表单标签ll el-input等输入框的在blur事件时进行校验
+        // 下拉菜单，单选框，复选框，是在change事件时进行校验//解决:
+        // 自己来给quill-editor绑定change事件(在文档里查到的它支持change事件内容改变事件)
+        // 在事件处理函数中用el-form组件对象内，调用某个校验规则再重新执行（validateField)
+        // 就是他把两个文档结合起来看，发现quill-edito自带个change监听方法，然后el-form又有个validate类似的，单独校验某条数据的方法，在监听函数中调这个方法就实现校验了
+        cover_img: [{ required: true, message: '请选择文章封面！', trigger: 'blur' }]
       }
     }
   },
@@ -152,6 +202,67 @@ export default {
       const { data: res } = await getArtCateListAPI()
       if (res.code) return this.$message.error(res.message)
       this.cateList = res.data
+    },
+    // 点击表面上的+封面
+    chooseImgFn() {
+      // 模拟点击隐藏的那个实际input
+      this.$refs.iptFileRef.click()
+    },
+    // 监听文件选择框的 change 事件
+    onCoverChangeFn(e) {
+      // 获取到用户选择的封面
+      const files = e.target.files
+      if (!files.length) {
+        this.pubForm.cover_img = null // 用户没有选择封面
+        this.$refs.imgRef.setAttribute('src', defaultImg)
+      } else {
+        // 用户选择了封面
+        // 放进表单对象，准备传给后端
+        this.pubForm.cover_img = files[0]
+        // 因为后端要的是文件，所以不必像头像那样转化成base64字符串
+        const url = URL.createObjectURL(files[0])
+        // 直接从缓存地址引入预览
+        this.$refs.imgRef.setAttribute('src', url)
+      }
+
+      // 让表单单独校验封面的规则
+      this.$refs.pubFormRef.validateField('cover_img')
+    },
+    // 发布文章或草稿-按钮点击事件
+    pubArticleFn(state) {
+      // 1. 设置发布状态
+      this.pubForm.state = state
+      // 2. 表单预校验
+      this.$refs.pubFormRef.validate(async (valid) => {
+        if (!valid) {
+          this.$message.error('请完善文章信息！')
+          return false // 阻止默认行为(因为按钮有默认提交行为)
+        }
+        // 4. TODO：发布文章
+        // 创建 FormData 对象
+        const fd = new FormData() // 准备一个表单数据对象的容器 FormData类是HTML5新出的专门为了装文件内容和其他的参数的一个容器
+
+        // 向 FormData 中追加数据
+        Object.keys(this.pubForm).forEach((key) => {
+          // fd.append('参数名,值)
+          fd.append(key, this.pubForm[key])
+        })
+        // 发起新添文章的请求
+        const { data: res } = await addArticleAPI(fd)
+        if (res.code) return this.$message.error(res.message)
+        this.$message.success(res.message)
+        // 关闭对话框
+        this.pubDialogVisible = false
+        // TODO：刷新文章列表数据
+        // this.init
+      })
+    },
+    onDialogClosedFn() {
+      // 清空关键数据
+      this.$refs.pubFormRef.resetFields()
+      // 因为这2个变量对应的标签不是表单绑定的, 所以需要单独控制
+      this.pubForm.content = ''
+      this.$refs.imgRef.setAttribute('src', defaultImg)
     }
   }
 }
@@ -173,5 +284,13 @@ export default {
 // [data-v-hash] .ql-editor 这样就能选中组件内的标签的class类名了
 ::v-deep .ql-editor {
   min-height: 300px;
+}
+
+// 设置图片封面的宽高
+.cover-img {
+  width: 400px;
+  height: 280px;
+  background-size: cover;
+  object-fit: cover;
 }
 </style>
