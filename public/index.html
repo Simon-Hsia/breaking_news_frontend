@@ -1,17 +1,55 @@
 <!DOCTYPE html>
 <html lang="">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
-    <title><%= htmlWebpackPlugin.options.title %></title>
-  </head>
-  <body>
-    <noscript>
-      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
-    </noscript>
-    <div id="app"></div>
-    <!-- built files will be auto injected -->
-  </body>
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+  <title>
+    <%= htmlWebpackPlugin.options.title %>
+  </title>
+  <!--模板引擎的语法:ejs, artTemplate可以直接在html文件的标签里，注入js代码
+  后来有了vue，vue也有自己的模板语法(指令，插值表达式)模板都会被代码翻译成原生的标签，让浏览器识别 -->
+
+  <!--引入样式-->
+  <% for(var css of htmlWebpackPlugin.options.cdn.css) { %>
+    <link rel="stylesheet" href="<%=css%>">
+    <% } %>
+
+      <!--
+  <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.8/lib/theme-chalk/index.css">
+  <link rel="stylesheet" href="https://unpkg.com/quill@1.3.7/dist/quill.core.css">
+  <link rel="stylesheet" href="https://unpkg.com/quill@1.3.7/dist/quill.snow.css">
+  <link rel="stylesheet" href="https://unpkg.com/quill@1.3.7/dist/quill.bubble.css"> -->
+</head>
+
+<body>
+  <noscript>
+    <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled.
+        Please enable it to continue.</strong>
+  </noscript>
+  <div id="app"></div>
+
+  <!-- built files will be auto injected -->
+  <!--引入JS -->
+  <% for(var js of htmlWebpackPlugin.options.cdn.js){ %>
+    <script src="<%=js%>"></script>
+    <% } %>
+
+      <script>Vue.config.productionTip = false</script>
+      <!--
+  <script src="https://unpkg.com/echarts@5.3.2/dist/echarts.min.js"></script>
+  <script src="https://unpkg.com/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://unpkg.com/vue-router@3.5.1/dist/vue-router.js"></script>
+  <script src="https://unpkg.com/vuex@3.6.2/dist/vuex.js"></script>
+  <script src="https://unpkg.com/axios@0.27.2/dist/axios.min.js"></script>
+  <script src="https://unpkg.com/dayjs@1.11.3/dayjs.min.js"></script>
+  <script src="https://unpkg.com/element-ui@2.15.8/lib/index.js"></script>
+  <script src="https://unpkg.com/quill@1.3.7/dist/quill.js"></script>
+  <script src="https://unpkg.com/vue-quill-editor@3.0.6/dist/vue-quill-editor.js"></script>
+  <script src="https://unpkg.com/vuex-persistedstate@3.2.1/dist/vuex-persistedstate.umd.js"></script> -->
+
+</body>
+
 </html>
