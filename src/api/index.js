@@ -180,3 +180,27 @@ export const getArticleListAPI = ({ pagenum, pagesize, cate_id, state }) => {
     }
   })
 }
+
+/**
+ * 获取-文章详情
+ * @param {*} id 文章id
+ * @returns Promise对象
+ */
+export const getArticleDetailFn = (id) => {
+  return request({
+    url: '/my/article/info',
+    params: {
+      id
+    }
+  })
+}
+
+export const delArticleAPI = (id) => {
+  return request({
+    url: '/my/article/info',
+    method: 'DELETE',
+    params: {
+      id
+    }
+  })
+}

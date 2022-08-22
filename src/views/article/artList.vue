@@ -24,8 +24,8 @@
             </el-select>
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" size="small">筛选</el-button>
-            <el-button type="info" size="small">重置</el-button>
+            <el-button type="primary" size="small" @click="filterFn">筛选</el-button>
+            <el-button type="info" size="small" @click="resetListFn">重置</el-button>
           </el-form-item>
         </el-form>
         <!-- 发表文章的按钮 -->
@@ -41,7 +41,13 @@
 
       <!-- 文章表格区域 -->
       <el-table :data="artList" stripe style="width: 100%">
-        <el-table-column prop="title" label="文章标题"> </el-table-column>
+        <el-table-column label="文章标题">
+          <template v-slot="{ row }">
+            <el-link type="primary" @click="showDetailFn(row.id)">{{
+              row.title
+            }}</el-link>
+          </template>
+        </el-table-column>
         <el-table-column prop="cate_name" label="分类"> </el-table-column>
         <el-table-column prop="pub_date" label="发表时间">
           <template v-slot="{ row }">
@@ -49,7 +55,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="state" label="状态"> </el-table-column>
-        <el-table-column label="操作"> </el-table-column>
+        <el-table-column label="操作">
+          <template v-slot="{ row }">
+            <el-button type="danger" size="mini" @click="removeFn(row.id)">
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
       </el-table>
       <!-- 分页区域 -->
       <el-pagination
@@ -125,14 +137,41 @@
         </el-form-item>
       </el-form>
     </el-dialog>
+    <!-- 查看文章详情的对话框 -->
+    <el-dialog title="文章预览" :visible.sync="detailVisible" width="80%">
+      <!-- 查看文章详情的对话框 -->
+      <el-dialog title="文章预览" :visible.sync="detailVisible" width="80%">
+        <h1 class="title">{{ artDetail.title }}</h1>
+        <div class="info">
+          <span>作者：{{ artDetail.nickname || artDetail.username }}</span>
+          <span>发布时间：{{ $formatDate(artDetail.pub_date) }}</span>
+          <span>所属分类：{{ artDetail.cate_name }}</span>
+          <span>状态：{{ artDetail.state }}</span>
+        </div>
+        <!-- 分割线 -->
+        <el-divider></el-divider>
+        <!-- 文章的封面 -->
+        <!-- 因为后台返回的图片地址只有后半段, 需要自己拼接前缀服务器地址, 也就是基地址 -->
+        <img :src="baseURL + artDetail.cover_img" alt="" />
+        <!-- 文章的详情 -->
+        <!-- 注意：这个文章详情是html结构，得用v-html渲染 -->
+        <div v-html="artDetail.content" class="detail-box"></div>
+      </el-dialog>
+    </el-dialog>
   </div>
 </template>
 
 <script>
 // 导入默认的封面图片
 import defaultImg from '@/assets/images/cover.jpg'
-import { getArtCateListAPI, addArticleAPI, getArticleListAPI } from '@/api'
-
+import {
+  getArtCateListAPI,
+  addArticleAPI,
+  getArticleListAPI,
+  getArticleDetailFn,
+  delArticleAPI
+} from '@/api'
+import { baseURL } from '@/utils/request'
 export default {
   /**
    * 标签和样式中，引入图片文件直接写"静态路径”(把路径放在js的vue变量里再赋予是不行的)
@@ -148,6 +187,9 @@ export default {
   name: 'ArtList',
   data() {
     return {
+      baseURL, // 基地址
+      artDetail: {}, // 文章的详情信息对象
+      detailVisible: false, // 控制文章详情对话框的显示与隐藏
       pubDialogVisible: false, // 控制发表文章对话框的显示与隐藏
       // 查询参数对象
       q: {
@@ -276,7 +318,7 @@ export default {
         // 关闭对话框
         this.pubDialogVisible = false
         // TODO：刷新文章列表数据
-        this.initArtListFn()
+        this.resetListFn() //  原来用的是initArtListFn，但那个没有重置筛选条件
       })
     },
     // 监听到对话框已经关闭就会调用这个函数
@@ -300,12 +342,64 @@ export default {
       // 因为Pagination的标签上已经加了.sync，子组件内会双向绑定到右侧vue变量上(q对象里pagesize和pagenum已经改变了)
       // this.q.pagesize = newSize // 为 pagesize 赋值，这句是多余的，要是不信任饿了么UI也可以写上
       this.q.pagenum = 1 // 默认展示第一页数据
+      /* 问题:先点击最后一个页码，切换每页显示条数2->3，总数不够，分页只能分到2每页条数改变了，页码从3到2页改变了，2个事件都会触发
+      偶发性的bug:有的时候自动回到第二页有数据有的时候没有知识点:2个网络请求一起发，谁先回来不一定
+      原因:所以可能第2页3条数据回来有值铺设，紧接着第3页的3条数据回来了，空数组所以页面就是空的解决:当切换每页显示的条数，我们就把当前页码设置为1，而且标签里要设置 */
+
       this.initArtListFn() // 重新发起请求
     },
     // 页码值发生了变化
     handleCurrentChangeFn(newPage) {
       // this.q.pagenum = newPage // 为页码值赋值
       this.initArtListFn() // 重新发起请求
+    },
+    // 重置筛选表单
+    resetListFn() {
+      this.q = {
+        // 1. 重置查询参数对象
+        pagenum: 1,
+        pagesize: 2,
+        cate_id: '',
+        state: ''
+      }
+      this.initArtListFn() // 2. 重新发起请求
+    },
+    // 点击筛选按钮，要重置请求页码，pagesize就仁者见仁智者见智
+    filterFn() {
+      this.q.pagenum = 1
+      this.initArtListFn()
+    },
+    // 点击获取文章详情
+    async showDetailFn(id) {
+      const { data: res } = await getArticleDetailFn(id)
+      if (res.code) return this.$message.error(res.message)
+      this.artDetail = res.data
+      // 展示对话框
+      this.detailVisible = true
+    },
+    // 文章-删除
+    async removeFn(id) {
+      // 1. 询问用户是否要删除
+      const confirmResult = await this.$confirm(
+        '此操作将永久删除该文件, 是否继续?',
+        '提示',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      ).catch((err) => err)
+      // 2. 取消了删除
+      if (confirmResult === 'cancel') return
+      // 执行删除的操作
+      const { data: res } = await delArticleAPI(id)
+      if (res.code !== 0) return this.$message.error(res.message)
+      // 刷新列表数据
+      // 如果不加这行，删最后一条数据的时候会把已经没数据的页码发给后台，那样是获取不到剩余的数据的，所以应该在最后一条数据被删除后，直接自动跳到前一页
+
+      // 怎么实现呢，就是判断当前数据是否只有一条(后台已经删除了该数据，这是还没重新渲染的时候)。并且当前页不是第一页，然后就页码减一再发给后台
+      if (this.artList.length === 1 && this.q.pagenum > 1) this.q.pagenum--
+      this.initArtListFn()
     }
   }
 }
@@ -340,5 +434,27 @@ export default {
 // 分页组件样式
 .el-pagination {
   margin-top: 15px;
+}
+
+.title {
+  font-size: 24px;
+  text-align: center;
+  font-weight: normal;
+  color: #000;
+  margin: 0 0 10px 0;
+}
+
+.info {
+  font-size: 12px;
+  span {
+    margin-right: 20px;
+  }
+}
+
+// 修改 dialog 内部元素的样式，需要添加样式穿透
+::v-deep .detail-box {
+  img {
+    width: 500px;
+  }
 }
 </style>
