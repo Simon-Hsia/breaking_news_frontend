@@ -79,9 +79,7 @@ export const updateAvatarAPI = (avatar) => {
   return request({
     url: '/my/update/avatar',
     method: 'PATCH',
-    data: {
-      avatar
-    }
+    data: { avatar }
   })
 }
 
@@ -143,9 +141,7 @@ export const delArtCateAPI = (id) => {
   return request({
     url: '/my/cate/del',
     method: 'DELETE',
-    params: {
-      id
-    }
+    params: { id }
   })
 }
 
@@ -189,18 +185,19 @@ export const getArticleListAPI = ({ pagenum, pagesize, cate_id, state }) => {
 export const getArticleDetailFn = (id) => {
   return request({
     url: '/my/article/info',
-    params: {
-      id
-    }
+    params: { id }
   })
 }
 
+/**
+ * 删除文章
+ * @param {*} id 文章id
+ * @returns Promise对象
+ */
 export const delArticleAPI = (id) => {
   return request({
     url: '/my/article/info',
     method: 'DELETE',
-    params: {
-      id
-    }
+    params: { id }
   })
 }

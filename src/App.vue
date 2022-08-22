@@ -7,9 +7,7 @@
 
 <script>
 export default {
-  name: 'App',
-  methods: {},
-  created() {}
+  name: 'App'
 }
 </script>
 

@@ -48,9 +48,7 @@ const routes = [
   }
 ]
 
-const router = new VueRouter({
-  routes
-})
+const router = new VueRouter({ routes })
 
 const whiteList = ['/login', '/reg']
 router.beforeEach((to, from, next) => {

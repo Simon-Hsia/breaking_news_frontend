@@ -53,8 +53,6 @@
           router
           :default-active="$route.path"
           class="el-menu-vertical-demo"
-          @open="handleOpen"
-          @close="handleClose"
           background-color="#23262E"
           text-color="#fff"
           active-text-color="#409EFF"
@@ -118,6 +116,7 @@ export default {
     this.getMenusListFn()
   },
   methods: {
+    // 点击退出登录
     logoutFn() {
       this.$confirm('妈了个巴子要退出?', '提示', {
         confirmButtonText: '确定',
@@ -140,12 +139,6 @@ export default {
             message: '还是怂了'
           })
         })
-    },
-    handleOpen(key, keyPath) {
-      console.log(key, keyPath)
-    },
-    handleClose(key, keyPath) {
-      console.log(key, keyPath)
     },
     // 获取侧边栏菜单数据
     async getMenusListFn() {

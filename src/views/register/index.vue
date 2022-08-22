@@ -11,10 +11,18 @@
           <el-input placeholder="请输入用户名" v-model="regForm.username"></el-input>
         </el-form-item>
         <el-form-item prop="password">
-          <el-input type="password" placeholder="请输入密码" v-model="regForm.password"></el-input>
+          <el-input
+            type="password"
+            placeholder="请输入密码"
+            v-model="regForm.password"
+          ></el-input>
         </el-form-item>
         <el-form-item prop="repassword">
-          <el-input type="password" placeholder="请确认密码" v-model="regForm.repassword"></el-input>
+          <el-input
+            type="password"
+            placeholder="请确认密码"
+            v-model="regForm.repassword"
+          ></el-input>
         </el-form-item>
         <el-form-item>
           <el-button type="primary" class="btn-reg" @click="regNewUserFn">注册</el-button>
@@ -83,11 +91,10 @@ export default {
     // 注册新用户
     regNewUserFn() {
       // 进行表单预验证
-      this.$refs.regRef.validate(async valid => {
+      this.$refs.regRef.validate(async (valid) => {
         if (!valid) return false
         // 通过校验，发送请求
         const { data: res } = await registerAPI(this.regForm)
-        console.log(res)
         // 根据接口文档，制定响应策略
         // 注册失败，提示失败信息
         // elementu性还在Vue的原型链上添加了弹窗提示，$message属性

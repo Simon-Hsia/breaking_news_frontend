@@ -166,7 +166,6 @@ export default {
             to[key] = from[key]
           }
         }
-        console.log(this.addForm, artCate)
       })
     },
     // 点击删除按钮删除文章分类
