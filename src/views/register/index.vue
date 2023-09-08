@@ -8,7 +8,10 @@
       <!-- 注册的表单区域 -->
       <el-form ref="regRef" :model="regForm" :rules="rulesObj">
         <el-form-item prop="username">
-          <el-input placeholder="请输入用户名" v-model="regForm.username"></el-input>
+          <el-input
+            placeholder="请输入用户名"
+            v-model="regForm.username"
+          ></el-input>
         </el-form-item>
         <el-form-item prop="password">
           <el-input
@@ -25,7 +28,9 @@
           ></el-input>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" class="btn-reg" @click="regNewUserFn">注册</el-button>
+          <el-button type="primary" class="btn-reg" @click="regNewUserFn"
+            >注册</el-button
+          >
           <el-link type="info" @click="$router.push('/login')">去登录</el-link>
         </el-form-item>
       </el-form>
@@ -91,14 +96,16 @@ export default {
     // 注册新用户
     regNewUserFn() {
       // 进行表单预验证
-      this.$refs.regRef.validate(async (valid) => {
+      this.$refs.regRef.validate(async valid => {
         if (!valid) return false
         // 通过校验，发送请求
+        delete this.regForm.repassword //  我自己的后端没要求传这个，既然前端已经验证了就剔除吧
         const { data: res } = await registerAPI(this.regForm)
+
         // 根据接口文档，制定响应策略
         // 注册失败，提示失败信息
         // elementu性还在Vue的原型链上添加了弹窗提示，$message属性
-        if (res.code) return this.$message.error(res.message)
+        if (res.status) return this.$message.error(res.message)
         // 注册成功，提示用户并跳转登录组件
         this.$message.success(res.message)
         this.$router.push('/login')

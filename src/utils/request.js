@@ -5,11 +5,12 @@ import { Message } from 'element-ui'
 // 创建一个自定的axios方法(比原axios多了个基地址)
 // axios函数请求的url地址前面会被拼接基地址, 然后axios请求baseURL+url后台完整地址
 export const baseURL = 'http://big-event-vue-api-t.itheima.net'
+// export const baseURL = 'http://127.0.0.1:3007'
 const request = axios.create({ baseURL })
 
 // 定义请求拦截器
 // 白名单: 不需要携带token的api地址
-const whiteAPIList = ['/api/reg', '/api/login']
+const whiteAPIList = ['/api/reguser', '/api/login']
 request.interceptors.request.use(
   function (config) {
     // 不在白名单的请求在发起前都会进入一次
@@ -19,6 +20,7 @@ request.interceptors.request.use(
       config.headers.Authorization = store.state.token
       // this.$store.state.token这里this不是组件对象不能用this.$store拿到store对象
     }
+
     // 它返回给axios内源码，config配置对象(要请求后台的参数都在这个对象上)
     return config
   },
